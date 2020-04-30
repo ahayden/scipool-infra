@@ -8,7 +8,7 @@ dependencies:
   - "ahayden/sc-portfolio-ec2-ahayden.yaml"
 parameters:
   PortfolioId: !stack_output_external sc-portfolio-ec2-ahayden::SCEC2portfolioId
-  RepoRootURL: "https://github.com/ahayden/scipool-infra/tree/sandbox/"
+  RepoRootURL: "https://raw.githubusercontent.com/ahayden/scipool-infra/sandbox/templates/ahayden/"
   StackDatetime: !date
   ProductName: "sc-product-ec2-linux-jumpcloud-ahayden"
 hooks:
