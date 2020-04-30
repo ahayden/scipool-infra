@@ -219,23 +219,23 @@ Resources:
         - !ImportValue
           'Fn::Sub': '${AWS::Region}-sc-remote-management-iam-ReadAssumedRoleInformationPolicy'
         - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore" 
-#     AssumeRolePolicyDocument:
-#       Version: '2012-10-17'
-#       Statement:
-#         - Effect: Allow
-#           Principal:
-#             Service:
-#               - ec2.amazonaws.com
-#               - ssm.amazonaws.com 
-#           Action:
-#             - sts:AssumeRole
-      ReadAssumedRoleInformationPolicy: 
+      AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Resource: "*" #this matches role names, not ARN strings
-            Action: 
-              - iam:GetRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - ssm.amazonaws.com 
+            Action:
+              - sts:AssumeRole
+#     ReadAssumedRoleInformationPolicy: 
+#       Version: '2012-10-17'
+#       Statement:
+#         - Effect: Allow
+#           Resource: "*" #this matches role names, not ARN strings
+#           Action: 
+#             - iam:GetRole
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
