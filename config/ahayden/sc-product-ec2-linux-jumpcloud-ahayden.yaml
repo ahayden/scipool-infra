@@ -11,7 +11,7 @@ parameters:
   RepoRootURL: "https://raw.githubusercontent.com/ahayden/scipool-infra/sandbox/templates/ahayden/"
   StackDatetime: !date "%Y-%m-%dT%H:%M:%S"
   ProductName: "sc-product-ec2-linux-jumpcloud-ahayden"
-  VpcName: {{stack_gorup_config.internal_portfolio_vpcname}}
+  VpcName: {{stack_group_config.internal_portfolio_vpcname}}
 #hooks:
 #  before_launch:
 #    - !cmd "curl https://s3.amazonaws.com/{{stack_group_config.admincentral_cf_bucket}}/{{stack_group_config.service_catalog_library}}/master/ec2/sc-product-ec2-linux-jumpcloud.yaml --create-dirs -o templates/remote/sc-product-ec2-linux-jumpcloud.yaml"
