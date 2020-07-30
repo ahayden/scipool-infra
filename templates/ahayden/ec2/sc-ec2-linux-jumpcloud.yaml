@@ -1,12 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Service Catalog: Linux EC2 with Jumpcloud integration.'
+Description: 'Service Catalog: Linux EC2'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
-      - Label:
-          default: General Configuration
-        Parameters:
-          - PrivateNetwork
       - Label:
           default: Linux Instance Configuration
         Parameters:
@@ -14,8 +10,6 @@ Metadata:
           - LinuxDistribution
           - VolumeSize
     ParameterLabels:
-      PrivateNetwork:
-        default: Use private network?
       EC2InstanceType:
         default: EC2 Instance Type
       LinuxDistribution:
@@ -25,7 +19,7 @@ Metadata:
 Mappings:
   LinuxDistributions:
     Ubuntu:
-      AMIID: "ami-0447d7789ebc37ae3"  # https://github.com/Sage-Bionetworks-IT/packer-base-ubuntu-bionic/tree/v1.0.7
+      AMIID: "ami-0b7906ab614596e7e"  # https://github.com/Sage-Bionetworks-IT/packer-base-ubuntu-bionic/tree/v1.0.9
     AmazonLinux:
       AMIID: "ami-0810a318c4b1243c5"  # https://github.com/Sage-Bionetworks-IT/packer-base-amazonlinux2/tree/v1.0.2
 Parameters:
@@ -33,13 +27,6 @@ Parameters:
     Type: String
     Description: The VPC to put resources into
     Default: 'internalpoolvpc'
-  PrivateNetwork:
-    Type: String
-    Description: In the private subnet (recommended) as opposed to a public subnet
-    Default: 'true'
-    AllowedValues:
-      - 'true'
-      - 'false'
   EC2InstanceType:
     AllowedValues:
       - c4.large
@@ -204,7 +191,6 @@ Parameters:
     MinValue: 8
     MaxValue: 2000
 Conditions:
-  UsePublicSubnet: !Equals [!Ref PrivateNetwork, 'false']
   IsUbuntu: !Equals [!Ref LinuxDistribution, 'Ubuntu']
 Resources:
   InstanceRole:
@@ -217,8 +203,8 @@ Resources:
         - !ImportValue
           'Fn::Sub': '${AWS::Region}-cfn-tag-instance-policy-TagInstancePolicy'
         - !ImportValue
-          'Fn::Sub': '${AWS::Region}-sc-remote-management-iam-ReadAssumedRoleInformationPolicy'
-        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore" 
+          'Fn::Sub': '${AWS::Region}-get-role-policy-ReadAssumedRoleInformationPolicy'
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -226,58 +212,15 @@ Resources:
             Principal:
               Service:
                 - ec2.amazonaws.com
-                - ssm.amazonaws.com 
+                - ssm.amazonaws.com #For maintenance service
             Action:
               - sts:AssumeRole
-#     ReadAssumedRoleInformationPolicy: 
-#       Version: '2012-10-17'
-#       Statement:
-#         - Effect: Allow
-#           Resource: "*" #this matches role names, not ARN strings
-#           Action: 
-#             - iam:GetRole
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles:
         - !Ref 'InstanceRole'
-  PrivateSubnetSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupDescription: >-
-        Allow all traffic to an instance originating from the VPN
-      VpcId: !ImportValue
-        'Fn::Sub': '${AWS::Region}-${VpcName}-VPCId'
-      SecurityGroupIngress:
-        - CidrIp: !ImportValue
-            'Fn::Sub': '${AWS::Region}-${VpcName}-VpnCidr'
-          FromPort: -1
-          ToPort: -1
-          IpProtocol: '-1'
-          Description: 'Allow all VPN traffic'
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          FromPort: -1
-          ToPort: -1
-          IpProtocol: '-1'
-  PublicSubnetSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Condition: UsePublicSubnet
-    Properties:
-      GroupDescription: Allow SSH to port 22
-      VpcId: !ImportValue
-        'Fn::Sub': '${AWS::Region}-${VpcName}-VPCId'
-      SecurityGroupIngress:
-        - Description: 'allow SSH'
-          IpProtocol: 'tcp'
-          FromPort: 22
-          ToPort: 22
-          CidrIp: '0.0.0.0/0'
-      SecurityGroupEgress:
-        - Description: 'allow all outgoing'
-          IpProtocol: '-1'
-          CidrIp: '0.0.0.0/0'
   LinuxInstance:
     Type: AWS::EC2::Instance
     Metadata:
@@ -291,9 +234,6 @@ Resources:
             - cfn_hup_service
           SetEnv:
             - set_env_vars
-          SetupJumpcloud:
-            - install_jc
-            - config_jc
           SetTags:
             - TagRootVolume
             - TagInstance
@@ -314,7 +254,7 @@ Resources:
                 [cfn-auto-reloader-hook]
                 triggers=post.update
                 path=Resources.LinuxInstance.Metadata.AWS::CloudFormation::Init
-                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LinuxInstance --configsets SetupCfn,SetEnv,SetupJumpcloud,SetTags --region ${AWS::Region}
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LinuxInstance --configsets SetupCfn,SetEnv,SetTags --region ${AWS::Region}
               mode: "000400"
               owner: root
               group: root
@@ -335,95 +275,57 @@ Resources:
               group: root
           commands:
             01_enable_cfn-hup:
-              command: "/bin/systemctl enable cfn-hup.service"
+              command: !Sub |
+                /bin/systemctl enable cfn-hup.service ;\
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}
             02_start_cfn-hup:
-              command: "/bin/systemctl start cfn-hup.service"
+              command: !Sub |
+                /bin/systemctl start cfn-hup.service ;\
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}
         set_env_vars:
           files:
             /opt/sage/bin/make_env_vars_file.sh:
-              source: "https://raw.githubusercontent.com/Sage-Bionetworks/service-catalog-utils/v1.0.1/linux/opt/sage/bin/make_env_vars_file.sh"
+              source: "https://raw.githubusercontent.com/Sage-Bionetworks/service-catalog-utils/v1.0.5/linux/opt/sage/bin/make_env_vars_file.sh"
               mode: "00744"
               owner: "root"
               group: "root"
           commands:
             01_make_env_vars_file:
-              command: "/bin/bash /opt/sage/bin/make_env_vars_file.sh"
+              command: !Sub |
+                /bin/bash /opt/sage/bin/make_env_vars_file.sh ;\
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}
               env:
                 AWS_REGION: !Ref AWS::Region
                 STACK_NAME: !Ref AWS::StackName
                 STACK_ID: !Ref AWS::StackId
-        install_jc:
-          commands:
-            01_jumpcloud_agent:
-              command: !Join
-                - ''
-                - - "/usr/bin/curl --silent --show-error --header 'x-connect-key: "
-                  - Fn::Transform: {"Name": "SsmParam", "Parameters": {"Type": "SecureString", "Name": "/infra/JcConnectKey"}}
-                  - "' https://kickstart.jumpcloud.com/Kickstart | sudo bash"
-        config_jc:
-          files:
-            /opt/sage/bin/associate_jc_systems.sh:
-              content: !Sub |
-                #! /bin/bash
-
-                source /opt/sage/bin/instance_env_vars.sh
-                JC_SYSTEM_ID=$(sudo cat /opt/jc/jcagent.conf|jq -r '.systemKey')
-                JC_SYSTEM_USERS=$(/usr/bin/curl --silent --show-error -X GET \
-                  https://console.jumpcloud.com/api/systemusers \
-                  -H 'Accept: application/json' \
-                  -H 'Content-Type: application/json' \
-                  -H x-api-key:$JC_SERVICE_API_KEY)
-                JC_USER_ID=$(echo $JC_SYSTEM_USERS | jq -r --arg EMAIL "$OWNER_EMAIL" '.results | .[] | select(.email==$EMAIL) | .id')
-                /usr/bin/curl -X POST https://console.jumpcloud.com/api/v2/users/$JC_USER_ID/associations \
-                  -H 'Accept: application/json' \
-                  -H 'Content-Type: application/json' \
-                  -H x-api-key:$JC_SERVICE_API_KEY \
-                  -d '{"attributes":{"sudo":{"enabled":true,"withoutPassword":false}},"op":"add","type":"system","id":"'$JC_SYSTEM_ID'"}'
-
-              mode: "00744"
-              owner: "root"
-              group: "root"
-          commands:
-            # allow agent time to register with jumpcloud account
-            01_wait_registration:
-              command: "sleep 10"
-            02_associate_jc_systems:
-              command: "/opt/sage/bin/associate_jc_systems.sh"
-              env:
-                JC_SERVICE_API_KEY:
-                  Fn::Transform: {"Name": "SsmParam", "Parameters": {"Type": "SecureString", "Name": "/infra/JcServiceApiKey"}}
         TagRootVolume:
           commands:
             01_tag_root_disk:
-              command: !Join
-                - ''
-                - - ". /opt/sage/bin/instance_env_vars.sh;"
-                  - "/usr/bin/aws ec2 create-tags --region $AWS_REGION --resources $ROOT_DISK_ID "
-                  - "--tags Key=Name,Value=$EC2_INSTANCE_ID-root Key=cloudformation:stack-name,Value=$STACK_NAME "
-                  - "Key=Department,Value=$DEPARTMENT Key=Project,Value=$PROJECT Key=OwnerEmail,Value=$OWNER_EMAIL"
+              command: !Sub |
+                . /opt/sage/bin/instance_env_vars.sh ;\
+                /usr/bin/aws ec2 create-tags --region $AWS_REGION --resources $ROOT_DISK_ID \
+                  --tags Key=Name,Value=$EC2_INSTANCE_ID-root Key=cloudformation:stack-name,Value=$STACK_NAME \
+                  Key=Department,Value=$DEPARTMENT Key=Project,Value=$PROJECT Key=OwnerEmail,Value=$OWNER_EMAIL ;\
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}'
         TagInstance:
           files:
             /opt/sage/bin/apply_name_tag.sh:
-              source: "https://raw.githubusercontent.com/Sage-Bionetworks/service-catalog-utils/v1.0.1/linux/opt/sage/bin/apply_name_tag.sh"
+              source: "https://raw.githubusercontent.com/Sage-Bionetworks/service-catalog-utils/v1.0.5/linux/opt/sage/bin/apply_name_tag.sh"
               mode: "00744"
               owner: "root"
               group: "root"
           commands:
             01_name_tag:
-              command: "/bin/bash /opt/sage/bin/apply_name_tag.sh"
+              command: !Sub |
+                /bin/bash /opt/sage/bin/apply_name_tag.sh ;\
+                /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}
     Properties:
       ImageId: !FindInMap [LinuxDistributions, !Ref LinuxDistribution, AMIID]
       InstanceType: !Ref 'EC2InstanceType'
-      SubnetId: !If
-        - UsePublicSubnet
-        - !ImportValue
-          'Fn::Sub': '${AWS::Region}-${VpcName}-PublicSubnet'
-        - !ImportValue
-          'Fn::Sub': '${AWS::Region}-${VpcName}-PrivateSubnet'
-      SecurityGroupIds: !If
-        - UsePublicSubnet
-        - [!Ref PrivateSubnetSecurityGroup, !Ref PublicSubnetSecurityGroup]
-        - [!Ref PrivateSubnetSecurityGroup]
+      SubnetId: !ImportValue
+        'Fn::Sub': '${AWS::Region}-${VpcName}-PrivateSubnet'
+      SecurityGroupIds:
+        - 'Fn::ImportValue': !Sub '${AWS::Region}-${VpcName}-VpnSecurityGroup'
       KeyName: 'scipool'
       BlockDeviceMappings:
         -
@@ -436,41 +338,34 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LinuxInstance --configsets SetupCfn,SetEnv,SetupJumpcloud,SetTags --region ${AWS::Region}
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LinuxInstance --configsets SetupCfn,SetEnv,SetTags --region ${AWS::Region}
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource LinuxInstance --region ${AWS::Region}
       Tags:
         - Key: Name
           Value: !Ref 'AWS::StackName'
         - Key: Description
           Value: !Sub "Service Catalog instance created by ${AWS::StackName}"
-        - Key: "parkmycloud"
-          Value: "yes"
         - Key: "ManagedInstanceMaintenanceTarget"
           Value: "yes"
         - Key: "PatchGroup"
           Value: "prod-default"
-          #The session name appended to this roleid becomes the value of the AccessApprovedCaller tag
-        - Key: "AccessApprovedRoleId"
-          Value: !ImportValue 
-            'Fn::Sub': '${AWS::Region}-sc-enduser-iam-ServiceCatalogEndusers-RoleId'
+    CreationPolicy:
+      ResourceSignal:
+        Count: 6 #Must equal the number of calls to cfn-signal during provisioning
+        Timeout: PT10M
 Outputs:
-  TemplateID:
-    Value: service-catalog-reference-architectures/sc-ec2-ra
-  AWSRegionName:
-    Value: !Ref 'AWS::Region'
   LinuxInstanceId:
+    Description: 'The ID of the EC2 instance'
     Value: !Ref 'LinuxInstance'
   LinuxInstancePrivateIpAddress:
+    Description: 'The IP Address of the EC2 instance'
     Value: !GetAtt 'LinuxInstance.PrivateIp'
-  LinuxInstanceAvailabilityZone:
-    Value: !GetAtt 'LinuxInstance.AvailabilityZone'
   EC2InstanceType:
+    Description: 'The EC2 instance type'
     Value: !Ref 'EC2InstanceType'
-  IAMInstanceRole:
-    Value: !Ref 'InstanceRole'
-  IAMInstanceProfile:
-    Value: !Ref 'InstanceProfile'
-  ConnectionInstructions:
-    Value: "https://sagebionetworks.jira.com/wiki/spaces/IT/pages/996376579/Connect+to+Provisioned+Instances"
   ConnectionURI:
+    Description: 'Starts a shell session in the AWS Console'
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${LinuxInstance}?region=${AWS::Region}"
+  EC2ConsoleURI:
+    Description: 'Check your instance status with this link to the AWS Console'
+    Value: !Sub "https://console.aws.amazon.com/ec2/v2/home?region=${AWS::Region}#Instances:search=${LinuxInstance}"

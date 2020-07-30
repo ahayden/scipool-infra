@@ -3,9 +3,9 @@ stack_name: "sc-portfolio-ec2-ahayden"
 parameters:
   PorfolioName: sc-portfolio-ec2-ahayden
 dependencies:
-  - "develop/sc-ec2vpc-launchrole.yaml"
-  - "develop/sc-enduser-iam.yaml"
-  - "ahayden/sc-remote-management-iam.yaml"
+# - "develop/sc-ec2vpc-launchrole.yaml"
+# - "develop/sc-enduser-iam.yaml"
+# - "ahayden/sc-remote-management-iam.yaml"
 hooks:
   before_launch:
     - !cmd "curl https://s3.amazonaws.com/{{stack_group_config.admincentral_cf_bucket}}/{{stack_group_config.service_catalog_library}}/master/ec2/sc-portfolio-ec2.yaml --create-dirs -o templates/remote/sc-portfolio-ec2.yaml"
