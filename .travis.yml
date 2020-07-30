@@ -22,4 +22,7 @@ jobs:
         - pre-commit autoupdate
         - pre-commit run --all-files
     - stage: deploy
-      script: sceptre --debug launch $TRAVIS_BRANCH --yes
+      script:
+        # SC-26 & SC-219 workaround: dis-associate and re-associate SC actions on every deploy
+        - sceptre delete $TRAVIS_BRANCH/sc-product-assoc-ec2 --yes
+        - sceptre launch $TRAVIS_BRANCH --yes
