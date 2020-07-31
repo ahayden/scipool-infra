@@ -1,4 +1,4 @@
-template_path: "ahayden/sc-product-ec2-linux-jumpcloud.yaml"
+template_path: "ahayden/ec2/sc-product-ec2-linux-jumpcloud.yaml"
 stack_name: "sc-product-ec2-linux-jumpcloud-ahayden"
 stack_tags:
   Department: "Platform"
@@ -7,11 +7,8 @@ stack_tags:
 dependencies:
   - "ahayden/sc-portfolio-ec2-ahayden.yaml"
 parameters:
-  PortfolioId: !stack_output_external sc-portfolio-ec2-ahayden::SCEC2portfolioId
+# PortfolioId: !stack_output_external sc-portfolio-ec2-ahayden::SCEC2portfolioId
   RepoRootURL: "https://raw.githubusercontent.com/ahayden/scipool-infra/sandbox/templates/ahayden/"
   StackDatetime: !date "%Y-%m-%dT%H:%M:%S"
   ProductName: "sc-product-ec2-linux-jumpcloud-ahayden"
-  VpcName: {{stack_group_config.internal_portfolio_vpcname}}
-#hooks:
-#  before_launch:
-#    - !cmd "curl https://s3.amazonaws.com/{{stack_group_config.admincentral_cf_bucket}}/{{stack_group_config.service_catalog_library}}/master/ec2/sc-product-ec2-linux-jumpcloud.yaml --create-dirs -o templates/remote/sc-product-ec2-linux-jumpcloud.yaml"
+# VpcName: {{stack_group_config.internal_portfolio_vpcname}}
