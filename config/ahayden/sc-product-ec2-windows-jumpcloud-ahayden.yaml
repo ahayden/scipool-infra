@@ -1,0 +1,17 @@
+template_path: "remote/sc-product-ec2-windows-jumpcloud.yaml"
+stack_name: "sc-product-ec2-windows-jumpcloud-ahayden"
+stack_tags:
+  Department: "Platform"
+  Project: "Infrastructure"
+  OwnerEmail: "it@sagebase.org"
+dependencies:
+  - "ahayden/sc-portfolio-ec2-ahayden.yaml"
+parameters:
+  RepoRootURL: {{stack_group_config.library_repo}}
+  StackDatetime: !date
+  ReplaceProvisioningArtifacts: "true"
+  ProductName: "sc-product-ec2-windows-jumpcloud-ahayden"
+hooks:
+  before_launch:
+    - !cmd "curl -L {{stack_group_config.infra_repo}}/{{stack_group_config.infra_branch}}/templates/sc-product-ec2-windows-jumpcloud.yaml --create-dirs -o templates/remote/sc-product-ec2-windows-jumpcloud.yaml"
+    - !cmd "curl -L {{stack_group_config.library_repo}}/{{stack_group_config.library_branch}}/ec2/sc-ec2-windows-jumpcloud.yaml --create-dirs -o templates/remote/ec2/sc-ec2-windows-jumpcloud.yaml"

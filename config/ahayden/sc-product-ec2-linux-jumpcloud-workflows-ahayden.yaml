@@ -10,6 +10,8 @@ parameters:
   RepoRootURL: {{stack_group_config.library_repo}}
   StackDatetime: !date
   ReplaceProvisioningArtifacts: "true"
+  ProductName: "sc-product-ec2-linux-jumpcloud-workflows-ahayden"
+hooks:
   before_launch:
     - !cmd "curl -L {{stack_group_config.infra_repo}}/{{stack_group_config.infra_branch}}/templates/sc-product-ec2-linux-jumpcloud-workflows.yaml --create-dirs -o templates/remote/sc-product-ec2-linux-jumpcloud-workflows.yaml"
     - !cmd "curl -L {{stack_group_config.library_repo}}/{{stack_group_config.library_branch}}/ec2/sc-ec2-linux-jumpcloud-workflows.yaml --create-dirs -o templates/remote/ec2/sc-ec2-linux-jumpcloud-workflows.yaml"

@@ -7,11 +7,9 @@ stack_tags:
 dependencies:
   - "ahayden/sc-portfolio-ec2-ahayden.yaml"
 parameters:
-# PortfolioId: !stack_output_external sc-portfolio-ec2-ahayden::SCEC2portfolioId
   RepoRootURL: {{stack_group_config.library_repo}}
   StackDatetime: !date "%Y-%m-%dT%H:%M:%S"
   ProductName: "sc-product-ec2-linux-jumpcloud-ahayden"
-# VpcName: {{stack_group_config.internal_portfolio_vpcname}}
 hooks:
   before_launch:
     - !cmd "curl -L {{stack_group_config.infra_repo}}/{{stack_group_config.infra_branch}}/templates/sc-product-ec2-linux-jumpcloud.yaml --create-dirs -o templates/remote/sc-product-ec2-linux-jumpcloud.yaml"
