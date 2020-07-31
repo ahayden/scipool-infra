@@ -1,5 +1,8 @@
-template_path: "sc-portfolio-ec2.yaml"
+template_path: "remote/sc-portfolio-ec2.yaml"
 stack_name: "sc-portfolio-ec2-ahayden"
 parameters:
   PorfolioName: sc-portfolio-ec2-ahayden
   PorfolioDescription: "EC2 Products for ahayden's testing"
+hooks:
+  before_launch:
+    - !cmd "curl -L {{stack_group_config.infra_repo}}/{{stack_group_config.infra_branch}}/templates/sc-portfolio-ec2.yaml --create-dirs -o templates/remote/sc-portfolio-ec2.yaml"

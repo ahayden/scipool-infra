@@ -1,1 +1,5 @@
 internal_portfolio_vpcname: 'cesspoolvpc' #'internalpoolvpc'
+infra_repo: 'https://raw.githubusercontent.com/ahayden/scipool-infra/'
+infra_branch: 'develop/'
+library_repo: 'https://raw.githubusercontent.com/ahayden/service-catalog-library/'
+library_branch: 'SC-216/creationpolicy/'

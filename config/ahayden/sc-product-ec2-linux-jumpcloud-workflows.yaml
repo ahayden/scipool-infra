@@ -1,0 +1,15 @@
+template_path: "remote/sc-product-ec2-linux-jumpcloud-workflows.yaml"
+stack_name: "sc-product-ec2-linux-jumpcloud-workflows-ahayden"
+stack_tags:
+  Department: "Platform"
+  Project: "Infrastructure"
+  OwnerEmail: "it@sagebase.org"
+dependencies:
+  - "ahayden/sc-portfolio-ec2-ahayden.yaml"
+parameters:
+  RepoRootURL: {{stack_group_config.library_repo}}
+  StackDatetime: !date
+  ReplaceProvisioningArtifacts: "true"
+  before_launch:
+    - !cmd "curl -L {{stack_group_config.infra_repo}}/{{stack_group_config.infra_branch}}/templates/sc-product-ec2-linux-jumpcloud-workflows.yaml --create-dirs -o templates/remote/sc-product-ec2-linux-jumpcloud-workflows.yaml"
+    - !cmd "curl -L {{stack_group_config.library_repo}}/{{stack_group_config.library_branch}}/ec2/sc-ec2-linux-jumpcloud-workflows.yaml --create-dirs -o templates/remote/ec2/sc-ec2-linux-jumpcloud-workflows.yaml"
